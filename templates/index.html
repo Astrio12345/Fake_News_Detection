@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Fake News Detector</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            padding: 40px;
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 2.5em;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 40px;
+            font-size: 1.1em;
+        }
+
+        .input-section {
+            margin-bottom: 30px;
+        }
+
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .tab {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            background: #f0f0f0;
+            cursor: pointer;
+            border-radius: 8px;
+            font-size: 1em;
+            transition: all 0.3s;
+        }
+
+        .tab.active {
+            background: #667eea;
+            color: white;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        textarea, input[type="url"] {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid #ddd;
+            border-radius: 10px;
+            font-size: 1em;
+            font-family: inherit;
+            resize: vertical;
+            transition: border-color 0.3s;
+        }
+
+        textarea:focus, input[type="url"]:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        textarea {
+            min-height: 200px;
+        }
+
+        .analyze-btn {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 1.2em;
+            cursor: pointer;
+            transition: transform 0.2s;
+            margin-top: 20px;
+        }
+
+        .analyze-btn:hover {
+            transform: translateY(-2px);
+        }
+
+        .analyze-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .result-section {
+            margin-top: 40px;
+            display: none;
+        }
+
+        .result-section.show {
+            display: block;
+            animation: fadeIn 0.5s;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .verdict {
+            text-align: center;
+            padding: 30px;
+            border-radius: 15px;
+            margin-bottom: 30px;
+            font-size: 1.5em;
+            font-weight: bold;
+        }
+
+        .verdict.fake {
+            background: #ffe0e0;
+            color: #d32f2f;
+        }
+
+        .verdict.real {
+            background: #e0f7e0;
+            color: #388e3c;
+        }
+
+        .verdict.uncertain {
+            background: #fff3e0;
+            color: #f57c00;
+        }
+
+        .percentage-bars {
+            display: grid;
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .percentage-item {
+            background: #f9f9f9;
+            padding: 20px;
+            border-radius: 10px;
+        }
+
+        .percentage-label {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            font-weight: 600;
+        }
+
+        .bar-container {
+            height: 30px;
+            background: #e0e0e0;
+            border-radius: 15px;
+            overflow: hidden;
+        }
+
+        .bar-fill {
+            height: 100%;
+            border-radius: 15px;
+            transition: width 1s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+        }
+
+        .bar-fill.fake {
+            background: linear-gradient(90deg, #f44336, #d32f2f);
+        }
+
+        .bar-fill.real {
+            background: linear-gradient(90deg, #4caf50, #388e3c);
+        }
+
+        .loader {
+            text-align: center;
+            padding: 20px;
+            display: none;
+        }
+
+        .loader.show {
+            display: block;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .error {
+            background: #ffebee;
+            color: #c62828;
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 20px;
+            display: none;
+        }
+
+        .error.show {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 AI Fake News Detector</h1>
+        <p class="subtitle">Analyze news articles for credibility using AI</p>
+
+        <div class="input-section">
+            <div class="tabs">
+                <button class="tab active" onclick="switchTab('text')">Paste Text</button>
+                <button class="tab" onclick="switchTab('url')">Enter URL</button>
+            </div>
+
+            <div id="text-tab" class="tab-content active">
+                <textarea id="newsText" placeholder="Paste the news article text here..."></textarea>
+            </div>
+
+            <div id="url-tab" class="tab-content">
+                <input type="url" id="newsUrl" placeholder="https://example.com/news-article">
+            </div>
+
+            <button class="analyze-btn" onclick="analyzeNews()">Analyze News</button>
+        </div>
+
+        <div class="loader" id="loader">
+            <div class="spinner"></div>
+            <p style="margin-top: 15px; color: #666;">Analyzing...</p>
+        </div>
+
+        <div class="error" id="error"></div>
+
+        <div class="result-section" id="results">
+            <div class="verdict" id="verdict"></div>
+
+            <div class="percentage-bars">
+                <div class="percentage-item">
+                    <div class="percentage-label">
+                        <span>Fake News Probability</span>
+                        <span id="fakePercent">0%</span>
+                    </div>
+                    <div class="bar-container">
+                        <div class="bar-fill fake" id="fakeBar" style="width: 0%"></div>
+                    </div>
+                </div>
+
+                <div class="percentage-item">
+                    <div class="percentage-label">
+                        <span>Real News Probability</span>
+                        <span id="realPercent">0%</span>
+                    </div>
+                    <div class="bar-container">
+                        <div class="bar-fill real" id="realBar" style="width: 0%"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentTab = 'text';
+
+        function switchTab(tab) {
+            currentTab = tab;
+
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+
+            event.target.classList.add('active');
+            document.getElementById(tab + '-tab').classList.add('active');
+        }
+
+        async function analyzeNews() {
+            const text = document.getElementById('newsText').value;
+            const url = document.getElementById('newsUrl').value;
+
+            if (currentTab === 'text' && !text.trim()) {
+                showError('Please enter some text to analyze');
+                return;
+            }
+
+            if (currentTab === 'url' && !url.trim()) {
+                showError('Please enter a URL');
+                return;
+            }
+
+            hideError();
+            hideResults();
+            showLoader();
+
+            try {
+                const response = await fetch('/analyze', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        text: currentTab === 'text' ? text : '',
+                        url: currentTab === 'url' ? url : ''
+                    })
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.error || 'Analysis failed');
+                }
+
+                displayResults(data);
+            } catch (error) {
+                showError(error.message);
+            } finally {
+                hideLoader();
+            }
+        }
+
+        function displayResults(data) {
+            const resultsDiv = document.getElementById('results');
+            const verdictDiv = document.getElementById('verdict');
+
+            verdictDiv.textContent = data.verdict;
+            verdictDiv.className = 'verdict';
+
+            if (data.verdict.includes('FAKE')) {
+                verdictDiv.classList.add('fake');
+            } else if (data.verdict.includes('REAL')) {
+                verdictDiv.classList.add('real');
+            } else {
+                verdictDiv.classList.add('uncertain');
+            }
+
+            document.getElementById('fakePercent').textContent = data.fake_percentage + '%';
+            document.getElementById('realPercent').textContent = data.real_percentage + '%';
+
+            setTimeout(() => {
+                document.getElementById('fakeBar').style.width = data.fake_percentage + '%';
+                document.getElementById('realBar').style.width = data.real_percentage + '%';
+            }, 100);
+
+            resultsDiv.classList.add('show');
+        }
+
+        function showLoader() {
+            document.getElementById('loader').classList.add('show');
+        }
+
+        function hideLoader() {
+            document.getElementById('loader').classList.remove('show');
+        }
+
+        function showError(message) {
+            const errorDiv = document.getElementById('error');
+            errorDiv.textContent = message;
+            errorDiv.classList.add('show');
+        }
+
+        function hideError() {
+            document.getElementById('error').classList.remove('show');
+        }
+
+        function hideResults() {
+            document.getElementById('results').classList.remove('show');
+        }
+    </script>
+</body>
+</html>
